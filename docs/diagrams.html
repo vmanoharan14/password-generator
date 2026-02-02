@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SecurePass Generator - Architecture Diagrams</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0f;
+      color: #f0f0f5;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 2rem;
+      background: linear-gradient(135deg, #00f5ff, #ff00ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    h2 {
+      color: #00f5ff;
+      margin: 2rem 0 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #2a2a3a;
+    }
+    .diagram-container {
+      background: #12121a;
+      border: 1px solid #2a2a3a;
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      overflow-x: auto;
+    }
+    .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+    p {
+      color: #8888a0;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>SecurePass Generator - Architecture Diagrams</h1>
+
+  <h2>1. Application Flow</h2>
+  <p>Shows the complete user journey from app initialization to password generation and copying.</p>
+  <div class="diagram-container">
+    <pre class="mermaid">
+flowchart TD
+    A[User Opens App] --> B[App Initializes]
+    B --> C[Generate Initial Password]
+    C --> D[Display Password]
+
+    subgraph "User Interactions"
+        E[Select Length Preset]
+        F[Toggle Character Types]
+        G[Click Generate]
+        H[Press Enter Key]
+        I[Click Copy]
+        J[Press Ctrl+C]
+    end
+
+    E --> K[Update Length State]
+    F --> L[Update Options State]
+    G --> M[Generate New Password]
+    H --> M
+
+    K --> M
+    L --> M
+
+    M --> N{Valid Options?}
+    N -->|Yes| O[crypto.getRandomValues]
+    N -->|No| P[Show Error]
+
+    O --> Q[Build Password String]
+    Q --> R[Update Password State]
+    R --> S[Add to History]
+    S --> D
+
+    I --> T[Copy to Clipboard]
+    J --> T
+    T --> U[Show Copied Feedback]
+
+    D --> V[Calculate Strength]
+    V --> W[Update Strength Meter]
+    </pre>
+  </div>
+
+  <h2>2. Data Flow</h2>
+  <p>Shows how data flows between state, utilities, and components.</p>
+  <div class="diagram-container">
+    <pre class="mermaid">
+flowchart LR
+    subgraph "State - usePasswordGenerator"
+        PS[password]
+        LP[lengthPreset]
+        OPT[options]
+        HIST[history]
+    end
+
+    subgraph "Utils"
+        GP[generatePassword.js]
+        CS[calculateStrength.js]
+    end
+
+    subgraph "Components"
+        PD[PasswordDisplay]
+        LS[LengthSelector]
+        CT[CharacterToggles]
+        SM[StrengthMeter]
+        PH[PasswordHistory]
+    end
+
+    LP --> GP
+    OPT --> GP
+    GP --> PS
+    PS --> PD
+    PS --> HIST
+
+    LP --> CS
+    OPT --> CS
+    CS --> SM
+
+    HIST --> PH
+
+    LS -->|setLengthPreset| LP
+    CT -->|toggleOption| OPT
+    </pre>
+  </div>
+
+  <h2>3. Password Generation Sequence</h2>
+  <p>Step-by-step sequence of how a password is generated.</p>
+  <div class="diagram-container">
+    <pre class="mermaid">
+sequenceDiagram
+    participant U as User
+    participant A as App
+    participant H as usePasswordGenerator
+    participant G as generatePassword
+    participant C as crypto API
+
+    U->>A: Click Generate / Press Enter
+    A->>H: Call generate()
+    H->>G: generatePassword(length, options)
+    G->>G: Build character set
+    G->>C: crypto.getRandomValues(array)
+    C-->>G: Random Uint32Array
+    G->>G: Map to characters
+    G-->>H: Return password string
+    H->>H: Update state
+    H->>H: Add to history
+    H-->>A: Trigger re-render
+    A-->>U: Display new password
+    </pre>
+  </div>
+
+  <h2>4. Component Hierarchy</h2>
+  <p>Shows the structure of React components in the application.</p>
+  <div class="diagram-container">
+    <pre class="mermaid">
+flowchart TD
+    App --> Header
+    App --> PasswordDisplay
+    App --> StrengthMeter
+    App --> LengthSelector
+    App --> CharacterToggles
+    App --> PasswordHistory
+    App --> KeyboardShortcuts
+
+    PasswordDisplay --> CopyButton
+    PasswordHistory --> HistoryItem1[HistoryItem]
+    PasswordHistory --> HistoryItem2[HistoryItem]
+    PasswordHistory --> HistoryItem3[HistoryItem...]
+    </pre>
+  </div>
+
+  <h2>5. State Management</h2>
+  <p>State transitions during password generation and copying.</p>
+  <div class="diagram-container">
+    <pre class="mermaid">
+stateDiagram-v2
+    [*] --> Idle
+
+    Idle --> Generating: Generate Triggered
+    Generating --> Displaying: Password Created
+    Displaying --> Idle: Ready for Next
+
+    Displaying --> Copied: Copy Triggered
+    Copied --> Displaying: Timeout 2s
+
+    state Displaying {
+        [*] --> ShowPassword
+        ShowPassword --> UpdateStrength
+        UpdateStrength --> UpdateHistory
+    }
+    </pre>
+  </div>
+
+  <h2>6. Character Set Configuration</h2>
+  <p>How character types combine to form the password character pool.</p>
+  <div class="diagram-container">
+    <pre class="mermaid">
+flowchart LR
+    subgraph "Character Types"
+        U[Uppercase A-Z]
+        L[Lowercase a-z]
+        N[Numbers 0-9]
+        S[Special !@#$%^&*]
+    end
+
+    subgraph "Toggle State"
+        TU{Enabled?}
+        TL{Enabled?}
+        TN{Enabled?}
+        TS{Enabled?}
+    end
+
+    U --> TU
+    L --> TL
+    N --> TN
+    S --> TS
+
+    TU -->|Yes| CP[Character Pool]
+    TL -->|Yes| CP
+    TN -->|Yes| CP
+    TS -->|Yes| CP
+
+    CP --> RNG[crypto.getRandomValues]
+    RNG --> PWD[Generated Password]
+    </pre>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      themeVariables: {
+        primaryColor: '#00f5ff',
+        primaryTextColor: '#f0f0f5',
+        primaryBorderColor: '#2a2a3a',
+        lineColor: '#8888a0',
+        secondaryColor: '#ff00ff',
+        tertiaryColor: '#12121a',
+        background: '#0a0a0f',
+        mainBkg: '#12121a',
+        nodeBorder: '#00f5ff',
+        clusterBkg: '#1a1a25',
+        titleColor: '#00f5ff',
+        edgeLabelBackground: '#12121a'
+      }
+    });
+  </script>
+</body>
+</html>
