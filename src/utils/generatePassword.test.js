@@ -82,7 +82,7 @@ describe('generatePassword', () => {
         numbers: false,
         special: true,
       });
-      expect(password).toMatch(/^[!@#$%^&*]+$/);
+      expect(password).toMatch(/^[\!\@\#\$\%\^\&\*\(\)\_\+\-\=\[\]\{\}\|\;\:\,\.\<\>\?]+$/);
     });
 
     it('should include alphanumeric characters when uppercase, lowercase, and numbers enabled', () => {
@@ -103,7 +103,7 @@ describe('generatePassword', () => {
         special: true,
       });
       // Password should only contain valid characters
-      expect(password).toMatch(/^[A-Za-z0-9!@#$%^&*]+$/);
+      expect(password).toMatch(/^[A-Za-z0-9\!\@\#\$\%\^\&\*\(\)\_\+\-\=\[\]\{\}\|\;\:\,\.\<\>\?]+$/);
     });
   });
 
@@ -117,6 +117,50 @@ describe('generatePassword', () => {
           special: false,
         })
       ).toThrow('At least one character type must be selected');
+    });
+
+    it('should throw error when length is less than 1', () => {
+      expect(() =>
+        generatePassword(0, {
+          uppercase: true,
+          lowercase: false,
+          numbers: false,
+          special: false,
+        })
+      ).toThrow('Length must be between 1 and 128');
+    });
+
+    it('should throw error when length is greater than 128', () => {
+      expect(() =>
+        generatePassword(129, {
+          uppercase: true,
+          lowercase: false,
+          numbers: false,
+          special: false,
+        })
+      ).toThrow('Length must be between 1 and 128');
+    });
+
+    it('should throw error when length is not an integer', () => {
+      expect(() =>
+        generatePassword(10.5, {
+          uppercase: true,
+          lowercase: false,
+          numbers: false,
+          special: false,
+        })
+      ).toThrow('Length must be an integer');
+    });
+
+    it('should throw error when length is negative', () => {
+      expect(() =>
+        generatePassword(-5, {
+          uppercase: true,
+          lowercase: false,
+          numbers: false,
+          special: false,
+        })
+      ).toThrow('Length must be between 1 and 128');
     });
   });
 
@@ -183,8 +227,41 @@ describe('generatePassword', () => {
     });
 
     it('should have correct special character set', () => {
-      expect(CHAR_SETS.special).toBe('!@#$%^&*');
-      expect(CHAR_SETS.special).toHaveLength(8);
+      expect(CHAR_SETS.special).toBe('!@#$%^&*()_+-=[]{}|;:,.<>?');
+      expect(CHAR_SETS.special).toHaveLength(26);
+    });
+  });
+
+  describe('Rejection Sampling (Modulo Bias Fix)', () => {
+    it('should generate passwords without modulo bias', () => {
+      // Generate many passwords and check distribution
+      const options = {
+        uppercase: false,
+        lowercase: false,
+        numbers: true,
+        special: false,
+      };
+
+      const counts = {};
+      const iterations = 2000;
+      
+      for (let i = 0; i < iterations; i++) {
+        const password = generatePassword(10, options);
+        for (const char of password) {
+          counts[char] = (counts[char] || 0) + 1;
+        }
+      }
+
+      // With rejection sampling, distribution should be uniform
+      // Each digit should appear roughly 2000 times (20000 chars / 10 digits)
+      const expected = iterations;
+      const tolerance = 0.25; // 25% variance allowed
+
+      for (const digit of '0123456789') {
+        const count = counts[digit] || 0;
+        expect(count).toBeGreaterThan(expected * (1 - tolerance));
+        expect(count).toBeLessThan(expected * (1 + tolerance));
+      }
     });
   });
 });
