@@ -26,7 +26,7 @@ export function usePasswordGenerator() {
       const newPassword = generatePassword(length, options);
       setPassword(newPassword);
       setHistory((prev) => [
-        { password: newPassword, timestamp: new Date() },
+        { password: newPassword, timestamp: new Date(), id: crypto.randomUUID() },
         ...prev.slice(0, 9),
       ]);
       return newPassword;

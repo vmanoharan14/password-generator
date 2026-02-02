@@ -47,8 +47,8 @@ export function PasswordHistory({ history, onClear }) {
       {isExpanded && (
         <div className="history-content">
           <div className="history-list">
-            {history.map((entry, index) => (
-              <HistoryItem key={index} entry={entry} />
+            {history.map((entry) => (
+              <HistoryItem key={entry.id} entry={entry} />
             ))}
           </div>
           <button className="clear-history-btn" onClick={onClear}>
